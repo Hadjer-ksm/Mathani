@@ -1,0 +1,23 @@
+{
+  "name": "مَثَانِي للحِفظ والتدبُّر",
+  "short_name": "مَثَانِي",
+  "description": "مصحفك الذكي للتثبيت والمراجعة والتسميع بالتكرار وبدون إنترنت",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#121214",
+  "theme_color": "#c5a880",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
