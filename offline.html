@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>غير متصل بالإنترنت - مَثَانِي</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" id="themeColorMeta" content="#c5a880">
+    <style>
+        /* ============================================
+           المتغيرات الأساسية (الثيم الداكن افتراضي)
+           ============================================ */
+        :root {
+            --bg-dark: #121214;
+            --bg-card: #1a1a1e;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-color: #c5a880;
+            --accent-glow: rgba(197, 168, 128, 0.2);
+            --border-color: rgba(197, 168, 128, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --success-color: #86efac;
+            --btn-text: #121214;
+        }
+
+        /* ============================================
+           الثيم الفاتح (يُطبق عبر JS)
+           ============================================ */
+        body.light-ivory {
+            --bg-dark: #faf8f5;
+            --bg-card: #fffef7;
+            --text-main: #1e3a2f;
+            --text-muted: #4a6b4a;
+            --accent-color: #876836;
+            --accent-glow: rgba(139, 94, 60, 0.12);
+            --border-color: rgba(139, 94, 60, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --success-color: #15803d;
+            --btn-text: #ffffff;
+        }
+
+        /* ============================================
+           التنسيقات العامة
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* ============================================
+           البطاقة الرئيسية
+           ============================================ */
+        .offline-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 40px 30px;
+            background: var(--bg-card);
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 60px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+            transition: background 0.4s ease, border-color 0.4s ease;
+        }
+
+        /* ============================================
+           التموج الناعم (يتكيف مع الثيم)
+           ============================================ */
+        .offline-container::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle at 30% 40%, var(--accent-glow) 0%, transparent 60%);
+            animation: softPulse 6s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+            transition: background 0.4s ease;
+        }
+
+        .offline-container > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes softPulse {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: translate(10%, 10%) scale(1.2);
+                opacity: 0.7;
+            }
+        }
+
+        /* ============================================
+           المحتوى
+           ============================================ */
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+            transition: color 0.3s ease;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.8;
+            margin-bottom: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .success-text {
+            color: var(--success-color);
+        }
+
+        /* ============================================
+           الأزرار
+           ============================================ */
+        .btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 32px;
+            background: var(--accent-color);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s, background 0.2s, color 0.2s;
+            width: 100%;
+            max-width: 280px;
+            box-sizing: border-box;
+        }
+
+        .btn:hover {
+            transform: scale(1.03);
+            background: #d4b896;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-glow);
+        }
+
+        .sub-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 20px;
+            opacity: 0.7;
+            transition: color 0.3s ease;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* تنسيق الزر الثانوي في الثيم الفاتح */
+        body.light-ivory .btn-secondary:hover {
+            background: rgba(139, 94, 60, 0.1);
+        }
+    </style>
+
+    <script>
+        // ============================================
+        // 🎨 تطبيق الثيم المحفوظ فوراً
+        // ============================================
+        (function() {
+            const savedTheme = localStorage.getItem('quran_theme') || 'dark-obsidian';
+            document.body.className = savedTheme;
+
+            // تغيير لون الخلفية احتياطياً
+            const bgColor = savedTheme === 'light-ivory' ? '#faf8f5' : '#121214';
+            document.documentElement.style.backgroundColor = bgColor;
+
+            // تحديث لون شريط المتصفح
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                const colorMap = {
+                    'dark-obsidian': '#121214',
+                    'light-ivory': '#faf8f5',
+                    'dark-emerald': '#0d1511',
+                    'light-azure': '#f0f6ff'
+                };
+                metaThemeColor.setAttribute('content', colorMap[savedTheme] || '#121214');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="offline-container">
+        <span class="offline-icon">🌐</span>
+        <h1>أنت غير متصل بالإنترنت</h1>
+        <p>لا تقلق، تطبيق "مَثَانِي" يعمل بدون نت أيضاً.</p>
+        <p style="font-size: 0.9rem;" class="success-text">✅ السور المحملة سابقاً متاحة<br>✅ التلاوات المحفوظة متاحة</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">🔹 للوصول إلى سور جديدة، يرجى الاتصال بالشبكة.</p>
+
+        <div class="btn-group">
+            <button class="btn" onclick="location.reload()">🔄 إعادة المحاولة</button>
+            <a href="/" class="btn btn-secondary">🏠 العودة إلى الرئيسية</a>
+        </div>
+
+        <p class="sub-text">📖 مصحفك الذكي للحفظ والتدبر</p>
+    </div>
+</body>
+</html>
