@@ -1,5 +1,5 @@
 // ============================================================
-// 📖 quranDisplay.js - عرض النص القرآني والآيات (الإصدار النهائي)
+// 📖 quranDisplay.js - عرض النص القرآني والآيات (الحل النهائي)
 // ============================================================
 
 // ----- الاستيرادات -----
@@ -48,33 +48,24 @@ function cacheQuranElements() {
 }
 
 // =====================================================================
-// 2.5 🛡️ دالة الإزالة الجذرية للبسملة (حل مشكلة الكاش والتشكيل المخفي)
+// 3. ✅ الحل القاطع: حذف أول 4 كلمات من الآية الأولى (البسملة)
 // =====================================================================
 function removeBasmalah(text) {
-    // 1. إزالة التشكيل والتطويل لسهولة المقارنة
-    let normalized = text.replace(/[\u064B-\u065F\u0670\u0640]/g, '');
-    normalized = normalized.replace(/\s+/g, ' ').trim();
+    // نقوم بتقسيم النص إلى كلمات
+    const words = text.trim().split(/\s+/);
     
-    // النص المطابق للبسملة بعد إزالة التشكيل
-    const basmalahText = 'بسم الله الرحمن الرحيم';
-    
-    // 2. التحقق من أن النص يبدأ فعلاً بالبسملة
-    if (normalized.startsWith(basmalahText)) {
-        // 3. تحديد موضع نهاية البسملة في النص الأصلي (لأن طول البسملة ثابت)
-        const index = normalized.indexOf(basmalahText);
-        if (index !== -1) {
-            const endIndex = index + basmalahText.length;
-            // 4. قص النص الأصلي من بعد "الرحيم" مباشرة، مما يترك "الٓمٓ" نظيفة تماماً
-            return text.substring(endIndex).trim();
-        }
+    // البسملة هي دائماً 4 كلمات: بسم الله الرحمن الرحيم
+    // إذا كان عدد الكلمات أكبر من 4، نحذف أول 4 كلمات
+    if (words.length > 4) {
+        return words.slice(4).join(' ');
     }
     
-    // إذا لم تكن هناك بسملة، نعيد النص كما هو
+    // إذا كان النص يحتوي على 4 كلمات فقط (مثل سورة الفاتحة)، نعيده كما هو
     return text;
 }
 
 // =====================================================================
-// 3. وضع الاختبار (Blind Test)
+// 4. وضع الاختبار (Blind Test)
 // =====================================================================
 export function applyBlindTestUI() {
     if (!quranTextArea) return;
@@ -103,7 +94,7 @@ export function setupBlindTestToggle() {
 }
 
 // =====================================================================
-// 4. ربط المستمعات بالآيات
+// 5. ربط المستمعات بالآيات
 // =====================================================================
 export function attachAyahListeners(onAyaClickCallback) {
     if (!quranTextArea) return;
@@ -163,7 +154,7 @@ export function attachAyahListeners(onAyaClickCallback) {
 }
 
 // =====================================================================
-// 5. جلب وعرض النص القرآني (مع استخدام الدالة الجديدة removeBasmalah)
+// 6. جلب وعرض النص القرآني
 // =====================================================================
 export async function fetchSurahText(id, onAyaClick) {
     if (!quranTextArea) return;
@@ -187,8 +178,7 @@ export async function fetchSurahText(id, onAyaClick) {
         surahData.ayahs.forEach((ayah) => {
             let ayahText = ayah.text;
             
-            // ✅ التعديل الجديد: إزالة البسملة من الآية الأولى فقط
-            // (نستخدم الدالة الجديدة removeBasmalah لضمان الإزالة التامة)
+            // ✅ التعديل الجديد: حذف البسملة من الآية الأولى
             if (ayah.numberInSurah === 1 && id !== 1 && id !== 9) {
                 ayahText = removeBasmalah(ayahText);
             }
@@ -212,7 +202,7 @@ export async function fetchSurahText(id, onAyaClick) {
 }
 
 // =====================================================================
-// 6. إدارة الموضع المحفوظ
+// 7. إدارة الموضع المحفوظ
 // =====================================================================
 export function saveCurrentAyaPosition(surahId, ayaNumber) {
     if (isBlindTestMode) return;
@@ -254,7 +244,7 @@ export function scrollToLastAya() {
 }
 
 // =====================================================================
-// 7. شريط التنقل السريع
+// 8. شريط التنقل السريع
 // =====================================================================
 export function updateQuickNavBar() {
     if (!quickNavBar) return;
@@ -312,7 +302,7 @@ export function setupQuickNavButtons() {
 }
 
 // =====================================================================
-// 8. دوال عامة
+// 9. دوال عامة
 // =====================================================================
 export function getSelectedAyah() {
     return selectedAyahNumber;
@@ -342,7 +332,7 @@ export function getBlindTestMode() {
 }
 
 // =====================================================================
-// 9. تهيئة جميع مكونات عرض القرآن
+// 10. تهيئة جميع مكونات عرض القرآن
 // =====================================================================
 export function initQuranDisplay(onAyaClickCallback) {
     cacheQuranElements();
