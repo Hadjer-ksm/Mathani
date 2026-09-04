@@ -1,29 +1,41 @@
 // ============================================================
 // 📦 dataManager.js - إدارة البيانات والتخزين المحلي
-// لتطبيق مَثَانِي
+// الآن: تحميل السور من api.alquran.cloud بشكل فردي
 // ============================================================
 
 import { AUDIO_CACHE_NAME, generateAudioUrl } from './constants.js';
 
 // =====================================================================
-// 1. متغير عام للبيانات القرآنية المحلية
+// 1. متغير عام لتخزين السور المحملة مؤقتاً (في الذاكرة)
 // =====================================================================
-export let quranData = null;
+export const cachedSurahs = {};
 
 // =====================================================================
-// 2. تحميل ملف JSON المحلي
+// 2. تحميل سورة واحدة من API (api.alquran.cloud)
 // =====================================================================
-export async function loadQuranData() {
-    if (quranData) return;
+export async function loadSurahData(surahId) {
+    // إذا كانت السورة محملة مسبقاً في الذاكرة، نعيدها فوراً
+    if (cachedSurahs[surahId]) {
+        return cachedSurahs[surahId];
+    }
+
     try {
-        const response = await fetch('quran-uthmani.json');
-        if (!response.ok) throw new Error('الملف غير موجود');
+        console.log(`🌐 جلب سورة ${surahId} من api.alquran.cloud...`);
+        const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahId}`);
+        if (!response.ok) throw new Error('API request failed');
         const json = await response.json();
-        quranData = json.data.surahs;
-        console.log('✅ تم تحميل النص القرآني المحلي بنجاح');
+
+        if (json && json.data) {
+            // حفظ السورة في الذاكرة
+            cachedSurahs[surahId] = json.data;
+            console.log(`✅ تم تحميل سورة ${surahId} بنجاح`);
+            return json.data;
+        } else {
+            throw new Error('Invalid API response structure');
+        }
     } catch (error) {
-        console.error('❌ فشل تحميل النص القرآني المحلي:', error);
-        // سيتم إظهار التوست من مكان آخر
+        console.error(`❌ فشل تحميل سورة ${surahId}:`, error);
+        throw new Error(`تعذر تحميل سورة ${surahId}`);
     }
 }
 
@@ -76,7 +88,8 @@ export function saveCurrentSurah(id) {
 }
 
 export function loadCurrentReciter() {
-    return localStorage.getItem('quran_current_reciter') || "yasser";
+    // ✅ تغيير القارئ الافتراضي إلى ماهر المعيقلي (maher)
+    return localStorage.getItem('quran_current_reciter') || "maher";
 }
 
 export function saveCurrentReciter(reciterId) {

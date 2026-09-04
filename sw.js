@@ -1,209 +1,258 @@
 // ============================================================
-// Service Worker لتطبيق "مَثَانِي" - يعمل بدون إنترنت بالكامل
-// الإصدار النهائي v5.0 (يتحمّل الملفات الكبيرة ويعمل على جميع المتصفحات)
+// 🛠️ sw.js - Service Worker لتطبيق مَثَانِي
+// الإصدار المُحسَّن: تخزين ديناميكي لسور القرآن (فردي) من alquran.cloud
 // ============================================================
 
-const CACHE_NAME = 'mathani-static-v5';
-const AUDIO_CACHE_NAME = 'mathani-audio-v5';
+// -----------------------------------------------------------
+// 1. إدارة الإصدارات (Cache Versioning)
+// -----------------------------------------------------------
+const CACHE_VERSION = 'v2'; // غيّر الرقم لتحديث الكاش
+const STATIC_CACHE = `${CACHE_VERSION}-quran-app-static`;
+const DYNAMIC_CACHE = `${CACHE_VERSION}-quran-app-dynamic`;
+const QURAN_API_CACHE = `${CACHE_VERSION}-quran-api-cache`; // كاش خاص بالسور
 
-// ===== الملفات الأساسية (يجب تخزينها عند التثبيت) =====
-const CORE_ASSETS = [
-  './',
-  'index.html',
-  'offline.html',
-  '404.html',
-  'style.css',
-  'animations.css',
-  'recorder-ui.css',
-  'constants.js',
-  'dataManager.js',
-  'progressTracker.js',
-  'uiCore.js',
-  'quranDisplay.js',
-  'audioPlayer.js',
-  'recorder.js',
-  'pwa.js',
-  'tutorial.js',
-  'main.js',
-  'manifest.json',
-  'icon-192.png',
-  'icon-512.png',
-  'favicon.png'
-  // تم استبعاد quran-uthmani.json وملف الخط لتجنب فشل التثبيت (سيتم تخزينهما عند الطلب)
+// اسم صفحة عدم الاتصال التي ستظهر عند فقدان الإنترنت
+const OFFLINE_PAGE = 'offline.html';
+
+// -----------------------------------------------------------
+// 2. قائمة الملفات الأساسية (بدون quran-uthmani.json)
+// -----------------------------------------------------------
+const PRECACHE_ASSETS = [
+    '/',
+    'index.html',
+    'offline.html',
+    '404.html',
+    'style.css',
+    'animations.css',
+    'recorder-ui.css',
+    'main.js',
+    'audioPlayer.js',
+    'constants.js',
+    'dataManager.js',
+    'progressTracker.js',
+    'pwa.js',
+    'quranDisplay.js',
+    'recorder.js',
+    'tutorial.js',
+    'uiCore.js',
+    // تم إزالة 'quran-uthmani.json' من هنا
+    'KFGQPC Uthmanic Script HAFS Regular.otf',
+    'favicon.png',
+    'icon-192.png',
+    'icon-512.png',
+    'manifest.json'
 ];
 
-// ===== تثبيت الـ Service Worker =====
-self.addEventListener('install', (event) => {
-  console.log('🔧 جاري تثبيت Service Worker الإصدار v5.0...');
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(async (cache) => {
-        console.log('⏳ جاري تخزين الملفات الأساسية...');
-        // استخدام Promise.allSettled لضمان عدم فشل التثبيت بسبب ملف واحد
-        const results = await Promise.allSettled(
-          CORE_ASSETS.map(async (url) => {
-            try {
-              const response = await fetch(url);
-              if (response && response.status === 200) {
-                await cache.put(url, response);
-                console.log(`✅ تم تخزين: ${url}`);
-              } else {
-                console.warn(`⚠️ الملف غير متاح (سيُطلب لاحقاً): ${url}`);
-              }
-            } catch (error) {
-              console.warn(`⚠️ فشل تخزين (سيُطلب لاحقاً): ${url}`, error);
-            }
-          })
-        );
-        const failed = results.filter(r => r.status === 'rejected');
-        if (failed.length > 0) {
-          console.warn(`⚠️ فشل تخزين ${failed.length} ملفات، لكن التثبيت مستمر.`);
-        } else {
-          console.log('✅ تم تخزين جميع الملفات الأساسية بنجاح!');
-        }
-      })
-      .catch((error) => {
-        console.error('❌ خطأ أثناء فتح الكاش:', error);
-      })
-  );
-  self.skipWaiting(); // تفعيل الـ SW فوراً
-});
+// أنواع الملفات الثابتة: Cache First
+const STATIC_EXTENSIONS = ['.css', '.otf', '.ttf', '.woff', '.woff2', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.gif'];
 
-// ===== تفعيل وحذف الكاش القديم =====
-self.addEventListener('activate', (event) => {
-  const cacheAllowlist = [CACHE_NAME, AUDIO_CACHE_NAME];
-  console.log('🔧 جاري تفعيل Service Worker وحذف الكاش القديم...');
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (!cacheAllowlist.includes(cacheName)) {
-            console.log(`🧹 حذف الكاش القديم: ${cacheName}`);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('✅ تم حذف الكاش القديم، SW جاهز للاستخدام.');
-      return self.clients.claim(); // السيطرة على الصفحات فوراً
-    })
-  );
-});
+// أنواع الملفات التي تحتاج تحديث: Stale-While-Revalidate
+const SWR_EXTENSIONS = ['.js', '.json'];
 
-// ===== دالة معالجة طلبات Range (لتشغيل الصوت على iOS) =====
-async function returnRangeResponse(request, cachedResponse) {
-  if (!cachedResponse || !cachedResponse.body) {
-    throw new Error('Invalid cached response');
-  }
-  
-  const arrayBuffer = await cachedResponse.arrayBuffer();
-  const rangeHeader = request.headers.get('range');
-  const match = rangeHeader?.match(/^bytes=(\d+)-(\d*)$/);
-  
-  if (match) {
-    const start = parseInt(match[1], 10);
-    const end = match[2] ? parseInt(match[2], 10) : arrayBuffer.byteLength - 1;
-    
-    const rangeBlob = new Blob([arrayBuffer.slice(start, end + 1)], { type: 'audio/mp3' });
-    return new Response(rangeBlob, {
-      status: 206,
-      statusText: 'Partial Content',
-      headers: {
-        'Content-Type': 'audio/mp3',
-        'Content-Range': `bytes ${start}-${end}/${arrayBuffer.byteLength}`,
-        'Content-Length': rangeBlob.size
-      }
-    });
-  }
-  return cachedResponse;
+// -----------------------------------------------------------
+// 3. دوال مساعدة للتحقق من نوع الطلب
+// -----------------------------------------------------------
+function isStaticAsset(url) {
+    return STATIC_EXTENSIONS.some((ext) => url.pathname.endsWith(ext));
 }
 
-// ===== معالجة جميع الطلبات =====
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+function isSwrAsset(url) {
+    return SWR_EXTENSIONS.some((ext) => url.pathname.endsWith(ext));
+}
 
-  // 1️⃣ الصوتيات (MP3): Network First + Cache Fallback + دعم Range
-  if (url.pathname.endsWith('.mp3')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(AUDIO_CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(event.request);
-          if (cached) {
-            if (event.request.headers.get('range')) {
-              return returnRangeResponse(event.request, cached);
-            }
-            return cached;
-          }
-          return new Response('⚠️ الصوت غير متاح حالياً', { status: 503 });
-        })
-    );
-    return;
-  }
+function isHtmlRequest(request) {
+    return request.mode === 'navigate' ||
+        (request.headers.get('accept') && request.headers.get('accept').includes('text/html'));
+}
 
-  // 2️⃣ ملفات JSON والخطوط (ثقيلة): Cache First (تُخزّن عند الطلب الأول)
-  if (url.pathname.endsWith('.json') || url.pathname.endsWith('.otf')) {
-    event.respondWith(
-      caches.match(event.request)
-        .then((cached) => {
-          if (cached) {
-            console.log(`✅ من الكاش: ${url.pathname}`);
-            return cached;
-          }
-          return fetch(event.request)
-            .then((response) => {
-              if (response && response.status === 200) {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(event.request, clone);
-                  console.log(`✅ تم تخزين في الكاش: ${url.pathname}`);
-                });
-              }
-              return response;
+// ✅ دالة للتحقق من طلب API لسورة فردية
+function isQuranSurahApiRequest(url) {
+    return url.hostname === 'alquran.cloud' &&
+           url.pathname.startsWith('/api/surah/') &&
+           /^\/api\/surah\/\d+$/.test(url.pathname);
+}
+
+// -----------------------------------------------------------
+// 4. أحداث التثبيت والتفعيل
+// -----------------------------------------------------------
+self.addEventListener('install', (event) => {
+    console.log('⚙️ [SW] جاري التثبيت...');
+    event.waitUntil(
+        caches.open(STATIC_CACHE)
+            .then((cache) => {
+                console.log('📦 [SW] تخزين الملفات الأساسية مسبقاً');
+                return Promise.all(
+                    PRECACHE_ASSETS.map((url) =>
+                        cache.add(url).catch((err) =>
+                            console.warn(`⚠️ [SW] تعذر تخزين الملف: ${url}`, err)
+                        )
+                    )
+                );
             })
-            .catch(() => {
-              return new Response('⚠️ المورد غير متاح', { status: 404 });
-            });
-        })
+            .then(() => self.skipWaiting())
     );
-    return;
-  }
-
-  // 3️⃣ باقي الملفات (HTML, CSS, JS, صور): Cache First
-  event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        return fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, clone);
-              });
-            }
-            return networkResponse;
-          })
-          .catch(() => {
-            // إذا كان الطلب لصفحة (Navigation)، نقدم offline.html
-            if (event.request.mode === 'navigate') {
-              return caches.match('offline.html')
-                .then(offlineResponse => offlineResponse || caches.match('index.html'));
-            }
-            return new Response('⚠️ تعذر تحميل المورد', { status: 404 });
-          });
-      })
-  );
 });
 
-// ===== تسجيل نجاح التثبيت =====
-console.log('✅ Service Worker v5.0 جاهز للعمل دون إنترنت!');
+self.addEventListener('activate', (event) => {
+    console.log('⚙️ [SW] جاري التفعيل...');
+    event.waitUntil(
+        caches.keys()
+            .then((cacheNames) => {
+                return Promise.all(
+                    cacheNames
+                        .filter((name) => name !== STATIC_CACHE &&
+                                         name !== DYNAMIC_CACHE &&
+                                         name !== QURAN_API_CACHE)
+                        .map((name) => {
+                            console.log(`🗑️ [SW] حذف كاش قديم: ${name}`);
+                            return caches.delete(name);
+                        })
+                );
+            })
+            .then(() => self.clients.claim())
+    );
+});
+
+// -----------------------------------------------------------
+// 5. استراتيجية Stale-While-Revalidate لطلبات API للسور
+// -----------------------------------------------------------
+async function staleWhileRevalidateForQuran(request) {
+    const cache = await caches.open(QURAN_API_CACHE);
+    const cachedResponse = await cache.match(request);
+
+    const networkFetch = fetch(request)
+        .then((res) => {
+            if (res && res.ok) {
+                cache.put(request, res.clone());
+            }
+            return res;
+        })
+        .catch(() => null);
+
+    if (cachedResponse) {
+        networkFetch.catch(() => {});
+        return cachedResponse;
+    }
+
+    const networkResponse = await networkFetch;
+    if (networkResponse) return networkResponse;
+
+    // لا يوجد اتصال ولا نسخة مخزنة
+    return new Response(
+        JSON.stringify({ error: 'السورة غير متاحة حالياً' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+    );
+}
+
+// -----------------------------------------------------------
+// 6. استراتيجيات أخرى (Cache First, Stale-While-Revalidate)
+// -----------------------------------------------------------
+async function cacheFirst(request) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+    try {
+        const networkResponse = await fetch(request);
+        const cache = await caches.open(DYNAMIC_CACHE);
+        cache.put(request, networkResponse.clone());
+        return networkResponse;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function staleWhileRevalidate(request) {
+    const cache = await caches.open(DYNAMIC_CACHE);
+    const cachedResponse = await cache.match(request);
+    const networkFetch = fetch(request)
+        .then((res) => {
+            if (res && res.ok) {
+                cache.put(request, res.clone());
+            }
+            return res;
+        })
+        .catch(() => null);
+    if (cachedResponse) {
+        networkFetch.catch(() => {});
+        return cachedResponse;
+    }
+    const networkResponse = await networkFetch;
+    if (networkResponse) return networkResponse;
+    throw new Error('تعذر جلب الملف');
+}
+
+async function handleHtmlRequest(request) {
+    try {
+        const networkResponse = await fetch(request);
+        const cache = await caches.open(DYNAMIC_CACHE);
+        cache.put(request, networkResponse.clone());
+        return networkResponse;
+    } catch (error) {
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) return cachedResponse;
+        const offlineResponse = await caches.match(OFFLINE_PAGE);
+        if (offlineResponse) return offlineResponse;
+        return new Response(
+            '<h1>غير متصل بالإنترنت</h1><p>يرجى التحقق من اتصالك.</p>',
+            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+    }
+}
+
+// -----------------------------------------------------------
+// 7. حدث الجلب (Fetch) - نقطة التحكم الرئيسية
+// -----------------------------------------------------------
+self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    if (request.method !== 'GET') return;
+
+    // طلبات API للسور من alquran.cloud
+    if (isQuranSurahApiRequest(url)) {
+        event.respondWith(staleWhileRevalidateForQuran(request));
+        return;
+    }
+
+    // الطلبات من نطاقات أخرى (مثل الصوتيات) نتركها تمر
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    // طلبات HTML
+    if (isHtmlRequest(request)) {
+        event.respondWith(handleHtmlRequest(request));
+        return;
+    }
+
+    // الملفات الثابتة
+    if (isStaticAsset(url)) {
+        event.respondWith(cacheFirst(request));
+        return;
+    }
+
+    // ملفات JS و JSON
+    if (isSwrAsset(url)) {
+        event.respondWith(staleWhileRevalidate(request));
+        return;
+    }
+
+    // أي طلب آخر
+    event.respondWith(
+        fetch(request)
+            .then((networkResponse) => {
+                const cache = caches.open(DYNAMIC_CACHE);
+                cache.then(c => c.put(request, networkResponse.clone()));
+                return networkResponse;
+            })
+            .catch(() => caches.match(request))
+    );
+});
+
+// -----------------------------------------------------------
+// 8. رسائل لتحديث السيرفس ووركر
+// -----------------------------------------------------------
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});

@@ -12,6 +12,7 @@ import { showToast } from './uiCore.js';
 let tutorialPopup = null;
 let closeTutorialBtn = null;
 let remindLaterBtn = null;
+let autoCloseTimer = null; // مؤقت للإغلاق التلقائي
 
 // =====================================================================
 // 2. تهيئة عناصر الجولة التعريفية
@@ -23,14 +24,13 @@ function cacheTutorialElements() {
 }
 
 // =====================================================================
-// 3. عرض الجولة التعريفية (مرة واحدة فقط)
+// 3. عرض الجولة التعريفية (مرة واحدة فقط) + إغلاق تلقائي بعد 15 ثانية
 // =====================================================================
 export function showTutorial() {
     const tutorialShown = localStorage.getItem('mathani_tutorial_shown');
 
     // إذا ظهرت الجولة سابقاً، لا نعرضها
     if (tutorialShown) {
-        // لكن قد نعرض نصائح متأخرة
         setTimeout(() => {
             showBottomTip();
         }, 2000);
@@ -41,16 +41,30 @@ export function showTutorial() {
     if (tutorialPopup) {
         setTimeout(() => {
             tutorialPopup.classList.add('active');
+
+            // ✅ إغلاق تلقائي بعد 15 ثانية
+            if (autoCloseTimer) clearTimeout(autoCloseTimer);
+            autoCloseTimer = setTimeout(() => {
+                if (tutorialPopup.classList.contains('active')) {
+                    closeTutorial();
+                }
+            }, 15000); // 15 ثانية
+
         }, 500);
     }
 }
 
 // =====================================================================
-// 4. إغلاق الجولة
+// 4. إغلاق الجولة (يدوياً أو تلقائياً)
 // =====================================================================
 export function closeTutorial() {
     if (tutorialPopup) {
         tutorialPopup.classList.remove('active');
+    }
+    // إلغاء المؤقت التلقائي إذا كان لا يزال نشطاً
+    if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
     }
     // حفظ أن الجولة ظهرت
     localStorage.setItem('mathani_tutorial_shown', 'true');
@@ -70,6 +84,11 @@ export function closeTutorial() {
 export function remindLater() {
     if (tutorialPopup) {
         tutorialPopup.classList.remove('active');
+    }
+    // إلغاء المؤقت التلقائي
+    if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
     }
     // لا نحفظ أن الجولة ظهرت، لذا ستظهر مرة أخرى في الجلسة القادمة
     showToast('📖 ستظهر لك الجولة مرة أخرى قريباً');
@@ -98,7 +117,6 @@ export function showBottomTip() {
         "💡 جرب وضع الاختبار (العين) لاختبار حفظك",
         "📲 يمكنك تثبيت التطبيق على شاشة هاتفك الرئيسية لاستخدام أسرع",
         "🎨 غيّر المظهر من زر الإعدادات ⚙️، هناك 4 ثيمات جميلة",
-        "🎤 سجّل تلاوتك وقارنها مع الشيخ لتطوير أدائك",
         "🤲 لا تنسنا من صالح دعائك، جزاك الله خيراً"
     ];
 
@@ -133,6 +151,10 @@ export function initTutorial() {
 export function resetTutorial() {
     localStorage.removeItem('mathani_tutorial_shown');
     localStorage.removeItem('mathani_bottom_tip_shown');
+    if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
+    }
     showToast('🔄 تم إعادة تعيين الجولة التعريفية');
 }
 
@@ -142,6 +164,13 @@ export function resetTutorial() {
 export function forceShowTutorial() {
     if (tutorialPopup) {
         tutorialPopup.classList.add('active');
+        // إعادة ضبط المؤقت التلقائي
+        if (autoCloseTimer) clearTimeout(autoCloseTimer);
+        autoCloseTimer = setTimeout(() => {
+            if (tutorialPopup.classList.contains('active')) {
+                closeTutorial();
+            }
+        }, 15000);
     }
 }
 
@@ -151,5 +180,9 @@ export function forceShowTutorial() {
 export function forceHideTutorial() {
     if (tutorialPopup) {
         tutorialPopup.classList.remove('active');
+    }
+    if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
     }
 }

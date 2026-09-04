@@ -386,38 +386,57 @@ export function bindAudioEvents() {
 }
 
 // =====================================================================
-// 13. ربط زر التسجيل المدمج
+// 14. 🆕 نظام تكبير الخط (6 مستويات - زر واحد يدور بينها)
 // =====================================================================
-export async function setupInlineRecorderButton() {
-    const inlineRecordBtn = document.getElementById('inlineRecordBtn');
-    if (!inlineRecordBtn) return;
+export function setupFontSizeControls() {
+    const increaseBtn = document.getElementById('fontSizeIncrease');
 
-    const { getRecorder } = await import('./recorder.js');
-    const recorder = getRecorder();
-    if (!recorder) {
-        console.warn('⚠️ نظام التسجيل غير جاهز');
+    if (!increaseBtn) {
+        console.warn('⚠️ زر تكبير الخط غير موجود في DOM');
         return;
     }
 
-    inlineRecordBtn.addEventListener('click', async () => {
-        const surahId = currentSurahNumber;
-        const { getSelectedAyah } = await import('./quranDisplay.js');
-        let ayahNumber = getSelectedAyah();
-        
-        if (!ayahNumber) {
-            ayahNumber = 1;
-            showToast('📌 اضغط على آية لتحديدها للتسجيل، سيتم تسجيل الآية الأولى حالياً');
-        }
+    // مستويات التكبير (6 مستويات)
+    const sizes = ['80', '100', '120', '140', '160', '180'];
+    const labels = ['80%', '100%', '120%', '140%', '160%', '180%'];
+    let currentIndex = 0; // 80% هو الافتراضي
 
-        if (recorder.isCurrentlyRecording()) {
-            await recorder.stopRecordingAyah();
-            return;
+    // تحميل المستوى المحفوظ من localStorage
+    const savedSize = localStorage.getItem('quran_font_size');
+    if (savedSize) {
+        const idx = sizes.indexOf(savedSize);
+        if (idx !== -1) {
+            currentIndex = idx;
         }
+    }
 
-        await recorder.startRecordingAyah(surahId, ayahNumber);
+    // تطبيق المستوى الحالي على الصفحة
+    function applySize(index) {
+        // إزالة جميع مستويات التكبير السابقة
+        document.body.classList.remove(
+            'font-size-80', 'font-size-100', 'font-size-120',
+            'font-size-140', 'font-size-160', 'font-size-180'
+        );
+        // إضافة المستوى الجديد
+        document.body.classList.add(`font-size-${sizes[index]}`);
+        // حفظ في localStorage
+        localStorage.setItem('quran_font_size', sizes[index]);
+        // حفظ الفهرس الحالي
+        currentIndex = index;
+        // إشعار للمستخدم
+        showToast(`📏 حجم الخط: ${labels[index]}`);
+    }
+
+    // تطبيق عند التحميل
+    applySize(currentIndex);
+
+    // حدث النقر على زر التكبير (يتحرك إلى المستوى التالي)
+    increaseBtn.addEventListener('click', () => {
+        // الانتقال إلى المستوى التالي (مع العودة إلى 0 بعد الوصول للنهاية)
+        const newIndex = (currentIndex + 1) % sizes.length;
+        applySize(newIndex);
     });
 }
-
 // =====================================================================
 // 14. تهيئة المشغل
 // =====================================================================
@@ -426,12 +445,7 @@ export function initAudioPlayer() {
     populateRecitersList();
     setupMediaSession();
     bindAudioEvents();
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupInlineRecorderButton);
-    } else {
-        setupInlineRecorderButton();
-    }
+    setupFontSizeControls(); // <-- استدعاء نظام تكبير الخط الجديد
 
     const savedSurahId = loadCurrentSurah();
     if (savedSurahId && savedSurahId !== 1) {

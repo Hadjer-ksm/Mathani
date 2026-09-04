@@ -1,14 +1,11 @@
 // ============================================================
-// 📖 quranDisplay.js - عرض النص القرآني والآيات
-// تشمل: جلب النص، عرض الآيات، وضع الاختبار، تثبيت الموضع، التنقل السريع
-// تم التعديل: إضافة تحديد الآية للتسجيل
+// 📖 quranDisplay.js - عرض النص القرآني والآيات (الإصدار النهائي)
 // ============================================================
 
 // ----- الاستيرادات -----
-import { surahsList } from './constants.js';
+import { surahsList, removeDiacritics } from './constants.js';
 import {
-    quranData,
-    loadQuranData,
+    loadSurahData,
     loadLastPosition,
     saveLastPosition,
     clearLastPosition
@@ -29,8 +26,6 @@ let isBlindTestMode = false;
 let warningShownForCurrentSurah = false;
 let lastPosition = null;
 let autoScrollEnabled = true;
-
-// ✅ متغير لتخزين الآية المحددة (للتسجيل)
 let selectedAyahNumber = null;
 
 let quranTextArea = null;
@@ -53,15 +48,37 @@ function cacheQuranElements() {
 }
 
 // =====================================================================
+// 2.5 🛡️ دالة الإزالة الجذرية للبسملة (حل مشكلة الكاش والتشكيل المخفي)
+// =====================================================================
+function removeBasmalah(text) {
+    // 1. إزالة التشكيل والتطويل لسهولة المقارنة
+    let normalized = text.replace(/[\u064B-\u065F\u0670\u0640]/g, '');
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    // النص المطابق للبسملة بعد إزالة التشكيل
+    const basmalahText = 'بسم الله الرحمن الرحيم';
+    
+    // 2. التحقق من أن النص يبدأ فعلاً بالبسملة
+    if (normalized.startsWith(basmalahText)) {
+        // 3. تحديد موضع نهاية البسملة في النص الأصلي (لأن طول البسملة ثابت)
+        const index = normalized.indexOf(basmalahText);
+        if (index !== -1) {
+            const endIndex = index + basmalahText.length;
+            // 4. قص النص الأصلي من بعد "الرحيم" مباشرة، مما يترك "الٓمٓ" نظيفة تماماً
+            return text.substring(endIndex).trim();
+        }
+    }
+    
+    // إذا لم تكن هناك بسملة، نعيد النص كما هو
+    return text;
+}
+
+// =====================================================================
 // 3. وضع الاختبار (Blind Test)
 // =====================================================================
 export function applyBlindTestUI() {
     if (!quranTextArea) return;
-
-    if (testModeToggle) {
-        testModeToggle.checked = isBlindTestMode;
-    }
-
+    if (testModeToggle) testModeToggle.checked = isBlindTestMode;
     quranTextArea.classList.toggle('blind-test-mode', isBlindTestMode);
     warningShownForCurrentSurah = false;
 }
@@ -70,54 +87,37 @@ export function toggleBlindTest() {
     isBlindTestMode = !isBlindTestMode;
     localStorage.setItem('quran_blind_test', isBlindTestMode);
     applyBlindTestUI();
-
-    showToast(
-        isBlindTestMode ?
-        "👁️ تم تفعيل وضع الاختبار وعزل الكلمات" :
-        "👁️ تم إلغاء وضع الاختبار وإظهار النص"
-    );
+    showToast(isBlindTestMode ? "👁️ تم تفعيل وضع الاختبار وعزل الكلمات" : "👁️ تم إلغاء وضع الاختبار وإظهار النص");
 }
 
 export function setupBlindTestToggle() {
     if (!testModeToggle) return;
-
     isBlindTestMode = localStorage.getItem('quran_blind_test') === 'true';
     applyBlindTestUI();
-
     testModeToggle.addEventListener('change', (e) => {
         isBlindTestMode = e.target.checked;
         localStorage.setItem('quran_blind_test', isBlindTestMode);
         applyBlindTestUI();
-
-        showToast(
-            isBlindTestMode ?
-            "👁️ تم تفعيل وضع الاختبار وعزل الكلمات" :
-            "👁️ تم إلغاء وضع الاختبار وإظهار النص"
-        );
+        showToast(isBlindTestMode ? "👁️ تم تفعيل وضع الاختبار وعزل الكلمات" : "👁️ تم إلغاء وضع الاختبار وإظهار النص");
     });
 }
 
 // =====================================================================
-// 4. ربط المستمعات بالآيات (نقر، ضغط مطول، لمس طويل)
+// 4. ربط المستمعات بالآيات
 // =====================================================================
 export function attachAyahListeners(onAyaClickCallback) {
     if (!quranTextArea) return;
-
     const ayaElements = quranTextArea.querySelectorAll('.quran-item');
-
     ayaElements.forEach((element) => {
         element.replaceWith(element.cloneNode(true));
     });
-
     const newAyaElements = quranTextArea.querySelectorAll('.quran-item');
-
     newAyaElements.forEach((element, idx) => {
         const ayaNumber = parseInt(element.dataset.ayaIndex) || (idx + 1);
         element.style.cursor = 'pointer';
 
         element.addEventListener('click', (e) => {
             e.stopPropagation();
-
             if (isBlindTestMode) {
                 if (!warningShownForCurrentSurah) {
                     showToast("👁️ في وضع الاختبار، اضغط مطولاً لإظهار الآية");
@@ -125,16 +125,10 @@ export function attachAyahListeners(onAyaClickCallback) {
                 }
                 return;
             }
-
-            // ✅ حفظ رقم الآية المحددة للتسجيل
             selectedAyahNumber = ayaNumber;
-
-            // استدعاء دالة التثبيت
             if (typeof onAyaClickCallback === 'function') {
                 onAyaClickCallback(currentSurahNumber, ayaNumber);
             }
-
-            // تأثير بصري مؤقت
             element.style.transition = 'all 0.3s';
             element.style.backgroundColor = 'var(--accent-glow)';
             setTimeout(() => {
@@ -163,65 +157,58 @@ export function attachAyahListeners(onAyaClickCallback) {
                 }, 300);
             }
         });
-        element.addEventListener('touchend', () => {
-            clearTimeout(touchTimer);
-        });
-        element.addEventListener('touchmove', () => {
-            clearTimeout(touchTimer);
-        });
+        element.addEventListener('touchend', () => clearTimeout(touchTimer));
+        element.addEventListener('touchmove', () => clearTimeout(touchTimer));
     });
 }
 
 // =====================================================================
-// 5. جلب وعرض النص القرآني
+// 5. جلب وعرض النص القرآني (مع استخدام الدالة الجديدة removeBasmalah)
 // =====================================================================
 export async function fetchSurahText(id, onAyaClick) {
     if (!quranTextArea) return;
-
     currentSurahNumber = id;
-
-    // إعادة تعيين الآية المحددة عند تغيير السورة
     selectedAyahNumber = null;
 
-    if (!quranData) {
-        quranTextArea.innerHTML = '<span class="loading-text">جاري تحميل النص القرآني...</span>';
-        await loadQuranData();
-        if (!quranData) {
-            quranTextArea.innerHTML = '<span class="loading-text">تعذر تحميل النص، يرجى التحقق من الملف</span>';
-            return;
-        }
-    }
+    quranTextArea.innerHTML = '<span class="loading-text">جاري تحميل السورة...</span>';
 
-    const surah = quranData.find(s => s.number === id);
-    if (!surah) {
-        quranTextArea.innerHTML = '<span class="loading-text">السورة غير موجودة في الملف</span>';
-        return;
-    }
-
-    let htmlContent = '';
-
-    if (id !== 1 && id !== 9) {
-        htmlContent += '<div class="basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>';
-    }
-
-    surah.ayahs.forEach((ayah) => {
-        let ayahText = ayah.text;
-
-        if (ayah.numberInSurah === 1) {
-            ayahText = ayahText.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ\s*/, '');
+    try {
+        const surahData = await loadSurahData(id);
+        if (!surahData || !surahData.ayahs) {
+            throw new Error('لم يتم العثور على السورة');
         }
 
-        const ayaNum = ayah.numberInSurah;
-        htmlContent +=
-            `<span class="quran-item" data-aya-index="${ayah.numberInSurah}">${ayahText} <span class="aya-num">﴿${ayaNum}﴾</span></span> `;
-    });
+        let htmlContent = '';
+        // نضيف البسملة كعنصر منفصل لجميع السور عدا الفاتحة (1) والتوبة (9)
+        if (id !== 1 && id !== 9) {
+            htmlContent += '<div class="basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>';
+        }
 
-    quranTextArea.innerHTML = htmlContent;
+        surahData.ayahs.forEach((ayah) => {
+            let ayahText = ayah.text;
+            
+            // ✅ التعديل الجديد: إزالة البسملة من الآية الأولى فقط
+            // (نستخدم الدالة الجديدة removeBasmalah لضمان الإزالة التامة)
+            if (ayah.numberInSurah === 1 && id !== 1 && id !== 9) {
+                ayahText = removeBasmalah(ayahText);
+            }
+            
+            const ayaNum = ayah.numberInSurah;
+            htmlContent +=
+                `<span class="quran-item" data-aya-index="${ayah.numberInSurah}">${ayahText} <span class="aya-num">﴿${ayaNum}﴾</span></span> `;
+        });
 
-    applyBlindTestUI();
-    attachAyahListeners(onAyaClick);
-    updateQuickNavBar();
-    scrollToLastAya();
+        quranTextArea.innerHTML = htmlContent;
+        applyBlindTestUI();
+        attachAyahListeners(onAyaClick);
+        updateQuickNavBar();
+        scrollToLastAya();
+
+    } catch (error) {
+        console.error('❌ فشل تحميل السورة:', error);
+        quranTextArea.innerHTML = `<span class="loading-text">⚠️ تعذر تحميل السورة. تأكد من اتصالك بالإنترنت.</span>`;
+        showToast('⚠️ فشل تحميل السورة، حاول مرة أخرى');
+    }
 }
 
 // =====================================================================
@@ -229,25 +216,15 @@ export async function fetchSurahText(id, onAyaClick) {
 // =====================================================================
 export function saveCurrentAyaPosition(surahId, ayaNumber) {
     if (isBlindTestMode) return;
-
-    const position = {
-        surah: surahId,
-        aya: ayaNumber,
-        timestamp: Date.now()
-    };
-
+    const position = { surah: surahId, aya: ayaNumber, timestamp: Date.now() };
     saveLastPosition(position);
     lastPosition = position;
-
     checkAndMarkSurahCompleted(surahId);
-
     const reciterId = document.getElementById('reciterSelect')?.value || "islam";
     const colorStates = JSON.parse(localStorage.getItem('quran_color_states')) || {};
     const progressData = JSON.parse(localStorage.getItem('quran_progress_tracker')) || {};
     refreshExistingCardsUI(reciterId, colorStates, progressData, lastPosition);
-
     updateQuickNavBar();
-
     showToast(`📌 تم تثبيت الموضع عند الآية ${ayaNumber}`);
 }
 
@@ -258,19 +235,12 @@ export function loadPositionFromStorage() {
 
 export function scrollToLastAya() {
     if (!autoScrollEnabled || !lastPosition || lastPosition.surah !== currentSurahNumber) return;
-
     const targetAya = lastPosition.aya;
     if (!quranTextArea) return;
-
     const ayaElements = quranTextArea.querySelectorAll('.quran-item');
-
     if (ayaElements[targetAya - 1]) {
         setTimeout(() => {
-            ayaElements[targetAya - 1].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-
+            ayaElements[targetAya - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
             ayaElements[targetAya - 1].style.transition = 'background 0.5s, box-shadow 0.3s';
             ayaElements[targetAya - 1].style.background = 'var(--accent-glow)';
             ayaElements[targetAya - 1].style.boxShadow = '0 0 15px var(--accent-color)';
@@ -278,7 +248,6 @@ export function scrollToLastAya() {
                 ayaElements[targetAya - 1].style.background = '';
                 ayaElements[targetAya - 1].style.boxShadow = '';
             }, 1000);
-
             showToast(`📖 تم العودة إلى الآية ${targetAya}`);
         }, 400);
     }
@@ -289,14 +258,10 @@ export function scrollToLastAya() {
 // =====================================================================
 export function updateQuickNavBar() {
     if (!quickNavBar) return;
-
     const hasPosition = lastPosition && lastPosition.surah === currentSurahNumber;
-
     if (hasPosition) {
         quickNavBar.style.display = 'flex';
-        if (savedAyaNumber) {
-            savedAyaNumber.innerText = lastPosition.aya;
-        }
+        if (savedAyaNumber) savedAyaNumber.innerText = lastPosition.aya;
     } else {
         quickNavBar.style.display = 'none';
     }
@@ -307,18 +272,11 @@ export function goToSavedAya() {
         showToast('📌 لا يوجد موضع محفوظ لهذه السورة');
         return;
     }
-
     const targetAya = lastPosition.aya;
     if (!quranTextArea) return;
-
     const ayaElements = quranTextArea.querySelectorAll('.quran-item');
-
     if (ayaElements[targetAya - 1]) {
-        ayaElements[targetAya - 1].scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-        });
-
+        ayaElements[targetAya - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
         ayaElements[targetAya - 1].style.transition = 'background 0.5s, box-shadow 0.3s';
         ayaElements[targetAya - 1].style.background = 'var(--accent-glow)';
         ayaElements[targetAya - 1].style.boxShadow = '0 0 15px var(--accent-color)';
@@ -326,7 +284,6 @@ export function goToSavedAya() {
             ayaElements[targetAya - 1].style.background = '';
             ayaElements[targetAya - 1].style.boxShadow = '';
         }, 1200);
-
         showToast(`📖 تم العودة إلى الآية ${targetAya}`);
     }
 }
@@ -336,7 +293,6 @@ export function clearSavedPosition() {
         clearLastPosition();
         lastPosition = null;
         updateQuickNavBar();
-
         const card = cachedCards.find(c => c.getAttribute('data-id') == currentSurahNumber);
         if (card) {
             const nameSpan = card.querySelector('.surah-name');
@@ -344,7 +300,6 @@ export function clearSavedPosition() {
                 nameSpan.innerHTML = nameSpan.innerHTML.replace(' 📌', '');
             }
         }
-
         showToast('🗑️ تم مسح الموضع المحفوظ');
     } else {
         showToast('📌 لا يوجد موضع محفوظ لهذه السورة');
@@ -352,40 +307,23 @@ export function clearSavedPosition() {
 }
 
 export function setupQuickNavButtons() {
-    if (goToSavedAyaBtn) {
-        goToSavedAyaBtn.addEventListener('click', goToSavedAya);
-    }
-
-    if (clearSavedPositionBtn) {
-        clearSavedPositionBtn.addEventListener('click', clearSavedPosition);
-    }
+    if (goToSavedAyaBtn) goToSavedAyaBtn.addEventListener('click', goToSavedAya);
+    if (clearSavedPositionBtn) clearSavedPositionBtn.addEventListener('click', clearSavedPosition);
 }
 
 // =====================================================================
-// 8. دوال خاصة بتحديد الآية للتسجيل
+// 8. دوال عامة
 // =====================================================================
-
-/**
- * الحصول على رقم الآية المحددة حالياً
- */
 export function getSelectedAyah() {
     return selectedAyahNumber;
 }
 
-/**
- * تعيين رقم الآية المحددة (للاستخدام من خارج الملف)
- */
 export function setSelectedAyah(ayah) {
     selectedAyahNumber = ayah;
 }
 
-// =====================================================================
-// 9. دوال عامة للتحكم في العرض
-// =====================================================================
 export function refreshQuranDisplay(surahId, onAyaClick) {
-    if (surahId) {
-        currentSurahNumber = surahId;
-    }
+    if (surahId) currentSurahNumber = surahId;
     fetchSurahText(currentSurahNumber, onAyaClick);
 }
 
@@ -404,16 +342,14 @@ export function getBlindTestMode() {
 }
 
 // =====================================================================
-// 10. تهيئة جميع مكونات عرض القرآن
+// 9. تهيئة جميع مكونات عرض القرآن
 // =====================================================================
 export function initQuranDisplay(onAyaClickCallback) {
     cacheQuranElements();
     loadPositionFromStorage();
     setupBlindTestToggle();
     setupQuickNavButtons();
-
     console.log('✅ تم تهيئة نظام عرض القرآن بنجاح');
-
     return {
         fetchSurahText: (id) => fetchSurahText(id, onAyaClickCallback),
         refreshQuranDisplay: (id) => refreshQuranDisplay(id, onAyaClickCallback),

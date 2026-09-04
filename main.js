@@ -1,13 +1,12 @@
 // ============================================================
-// 🚀 main.js - الملف الرئيسي (بعد إضافة نافذة الإعدادات)
+// 🚀 main.js - الملف الرئيسي (تم حذف نظام التسجيل)
 // ============================================================
 
 // ----- الاستيرادات -----
-import { loadQuranData } from './dataManager.js';
+import { loadSurahData } from './dataManager.js';
 import { initUI } from './uiCore.js';
 import { initAudioPlayer, selectSurah, closePlayer, getCurrentSurahNumber } from './audioPlayer.js';
-import { initQuranDisplay, saveCurrentAyaPosition, refreshQuranDisplay } from './quranDisplay.js';
-import { initRecorder } from './recorder.js';
+import { initQuranDisplay, refreshQuranDisplay } from './quranDisplay.js';
 import { initPwa } from './pwa.js';
 import { initTutorial } from './tutorial.js';
 import { showToast } from './uiCore.js';
@@ -18,7 +17,6 @@ import { initProgressTracker } from './progressTracker.js';
 // =====================================================================
 let audioControls = null;
 let quranControls = null;
-let recorderInstance = null;
 
 // =====================================================================
 // 2. دالة التهيئة الرئيسية
@@ -27,11 +25,9 @@ async function initApp() {
     console.log('🔄 جاري تهيئة تطبيق مَثَانِي...');
 
     try {
-        // ----- الخطوة 1: تحميل البيانات القرآنية -----
-        await loadQuranData();
-        fetch('quran-uthmani.json');
-        fetch('KFGQPC Uthmanic Script HAFS Regular.otf');
-        console.log('✅ تم تحميل البيانات القرآنية');
+        // ----- الخطوة 1: تحميل أول سورة (الفاتحة) مسبقاً -----
+        await loadSurahData(1);
+        console.log('✅ تم تحميل سورة الفاتحة مسبقاً');
 
         // ----- الخطوة 2: تهيئة واجهة المستخدم الأساسية -----
         initUI((surahId) => {
@@ -53,19 +49,15 @@ async function initApp() {
         });
         console.log('✅ تم تهيئة عرض القرآن');
 
-        // ----- الخطوة 6: تهيئة نظام التسجيل -----
-        recorderInstance = initRecorder();
-        console.log('✅ تم تهيئة نظام التسجيل');
-
-        // ----- الخطوة 7: تهيئة PWA (التثبيت) -----
+        // ----- الخطوة 6: تهيئة PWA (التثبيت) -----
         initPwa();
         console.log('✅ تم تهيئة نظام PWA');
 
-        // ----- الخطوة 8: تهيئة الجولة التعريفية -----
+        // ----- الخطوة 7: تهيئة الجولة التعريفية -----
         initTutorial();
         console.log('✅ تم تهيئة الجولة التعريفية');
 
-        // ----- الخطوة 9: استعادة الحالة المحفوظة -----
+        // ----- الخطوة 8: استعادة الحالة المحفوظة -----
         restoreSavedState();
 
         console.log('🎉 تم تهيئة تطبيق مَثَانِي بالكامل بنجاح!');
@@ -99,7 +91,7 @@ function handleAyaClick(surahId, ayaNumber) {
     if (quranControls && typeof quranControls.saveCurrentAyaPosition === 'function') {
         quranControls.saveCurrentAyaPosition(surahId, ayaNumber);
     } else {
-        saveCurrentAyaPosition(surahId, ayaNumber);
+        import('./quranDisplay.js').then(m => m.saveCurrentAyaPosition(surahId, ayaNumber));
     }
 }
 
@@ -131,7 +123,6 @@ function restoreSavedState() {
 // 6. دوال مساعدة للاستخدام من وحدة التحكم
 // =====================================================================
 window.__mathani = {
-    getQuranData: () => import('./dataManager.js').then(m => m.quranData),
     getSurahsList: () => import('./constants.js').then(m => m.surahsList),
 
     selectSurah: (id) => handleSurahSelection(id),
@@ -148,8 +139,6 @@ window.__mathani = {
         }
         return getCurrentSurahNumber();
     },
-
-    getRecorder: () => recorderInstance,
 
     installApp: () => {
         import('./pwa.js').then(m => {
@@ -217,6 +206,5 @@ export {
     handleAyaClick,
     restoreSavedState,
     audioControls,
-    quranControls,
-    recorderInstance
+    quranControls
 };

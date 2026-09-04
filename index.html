@@ -12,7 +12,7 @@
     <meta name="author" content="Hadjer (MathaniQuran)">
 
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    <link rel="canonical" href="https://mathani.hadjerhub.workers.dev/">
+    <link rel="canonical" href="https://mathani.nuda.workers.dev/">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +22,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="animations.css">
-    <link rel="stylesheet" href="recorder-ui.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" id="themeColorMeta" content="#c5a880">
      
@@ -40,10 +39,10 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="مَثَانِي للحِفظ والتدبُّر | مصحفك الذكي الذاتي">
     <meta property="og:description" content="مصحفك الذكي للتثبيت والمراجعة والتسميع بالتكرار وبدون إنترنت. تطبيق ويب تقدمي تفاعلي لحفظ كتاب الله تعالى.">
-    <meta property="og:url" content="https://mathani.hadjerhub.workers.dev/">
+    <meta property="og:url" content="https://mathani.nuda.workers.dev/">
     <meta property="og:site_name" content="مَثَانِي">
-    <meta property="og:image" content="https://mathani.hadjerhub.workers.dev/icon-512.png">
-    <meta property="og:image:secure_url" content="https://mathani.hadjerhub.workers.dev/icon-512.png">
+    <meta property="og:image" content="https://mathani.nuda.workers.dev/icon-512.png">
+    <meta property="og:image:secure_url" content="https://mathani.nuda.workers.dev/icon-512.png">
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
     <meta property="og:image:alt" content="شعار تطبيق مثاني للحفظ والتدبر">
@@ -52,8 +51,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="مَثَانِي للحِفظ والتدبُّر | مصحفك الذكي للتثبيت">
     <meta name="twitter:description" content="تثبيت ومراجعة وتسميع بالتكرار وبدون إنترنت عبر تطبيق ويب تقدمي متكامل ومجاني تماماً.">
-    <meta name="twitter:image" content="https://mathani.hadjerhub.workers.dev/icon-512.png">
-    <meta name="twitter:url" content="https://mathani.hadjerhub.workers.dev/">
+    <meta name="twitter:image" content="https://mathani.nuda.workers.dev/icon-512.png">
+    <meta name="twitter:url" content="https://mathani.nuda.workers.dev/">
     <meta name="google-site-verification" content="5_h6--8sUR2doO_IhDQI9kqhii49MOR-Bxz8xsy5NJE" />
     
     <!-- Google tag (gtag.js) -->
@@ -72,8 +71,8 @@
       "name": "مَثَانِي للحِفظ والتدبُّر",
       "alternateName": "تطبيق مثاني",
       "description": "مصحفك الذكي للتثبيت والمراجعة والتسميع بالتكرار وبدون إنترنت. تطبيق ويب تقدمي (PWA) مصمم بعناية لمساعدة حُفّاظ كتاب الله تعالى.",
-      "url": "https://mathani.hadjerhub.workers.dev/",
-      "image": "https://mathani.hadjerhub.workers.dev/icon-512.png",
+      "url": "https://mathani.nuda.workers.dev/",
+      "image": "https://mathani.nuda.workers.dev/icon-512.png",
       "operatingSystem": "Android, iOS, Windows, macOS, Linux",
       "applicationCategory": "EducationalApplication",
       "applicationSubCategory": "Divine Study Tool / Religious Application",
@@ -97,9 +96,7 @@
       }
     }
     </script>
-    <!-- تحميل ملف JSON والخط لتخزينهما في الكاش -->
-<link rel="preload" href="quran-uthmani.json" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="KFGQPC Uthmanic Script HAFS Regular.otf" as="font" crossorigin="anonymous">
+    <!-- تم إزالة preload لـ quran-uthmani.json و KFGQPC Uthmanic Script HAFS Regular.otf -->
 </head>
 
 <body class="dark-obsidian">
@@ -238,14 +235,23 @@
                 </label>
             </div>
 
-            <!-- زر التسجيل المدمج -->
-            <div class="control-frame" id="recordingControlFrame" title="تسجيل الآية الحالية">
-                <button class="recording-btn" id="inlineRecordBtn" aria-label="تسجيل الآية">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
-                    </svg>
-                </button>
+            <!-- أزرار تكبير الخط -->
+            <div class="control-frame" id="fontSizeControlFrame" title="تكبير/تصغير حجم الخط">
+                <div class="font-size-controls">
+                 
+                  
+                    <button class="font-size-btn" id="fontSizeIncrease" aria-label="تكبير الخط">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+        <circle cx="10" cy="10" r="7" />
+        <line x1="15" y1="15" x2="21" y2="21" />
+        <line x1="6" y1="10" x2="14" y2="10" />
+        <line x1="10" y1="6" x2="10" y2="14" />
+    </svg>
+</button>
+
+</button>
+                    
+                </div>
             </div>
         </div>
     </div>
@@ -390,8 +396,8 @@
                 <span class="step-text">لتبديل المظهر: استخدم <strong>زر الإعدادات</strong> ⚙️</span>
             </div>
             <div class="tutorial-step">
-                <span class="step-icon">🎤</span>
-                <span class="step-text">للتسجيل: <strong>اضغط على زر الدائرة</strong> بعد تحديد الآية</span>
+                <span class="step-icon">+</span>
+                <span class="step-text">لتكبير الخط : <strong>اضغط على زر التكبير</strong></span>
             </div>
         </div>
         <div class="tutorial-buttons">
@@ -400,8 +406,9 @@
         </div>
     </div>
 </div>
+
 <!-- ========================================================= -->
-<!-- نافذة الإعدادات (المظهر + التسجيلات + التواصل) -->
+<!-- نافذة الإعدادات -->
 <!-- ========================================================= -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal-content settings-modal-content">
@@ -410,15 +417,10 @@
             <button class="modal-close-x" id="closeSettingsModalBtn">&times;</button>
         </div>
 
-        <!-- تبويبات الإعدادات -->
         <div class="settings-tabs">
             <button class="settings-tab active" data-tab="theme">🎨 المظهر</button>
-            <button class="settings-tab" data-tab="recordings">🎤 التسجيلات</button>
-            <button class="settings-tab" data-tab="contact">💬 تواصل</button>
-            <!-- يمكن إضافة تبويبات مستقبلية هنا -->
         </div>
 
-        <!-- محتوى التبويب: المظهر -->
         <div class="settings-panel active" id="panel-theme">
             <div class="theme-options">
                 <button class="theme-option-btn" data-theme="dark-obsidian">
@@ -444,94 +446,10 @@
             </div>
         </div>
 
-        <!-- محتوى التبويب: التسجيلات -->
-        <div class="settings-panel" id="panel-recordings">
-            <div id="settingsRecordingsList">
-                <!-- ستظهر قائمة التسجيلات هنا عبر JavaScript -->
-                <p class="no-recordings">
-                    <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-                    </svg>
-                    لم تقم بأي تسجيلات بعد
-                </p>
-            </div>
-            <button class="btn btn-danger" id="clearAllRecordingsBtn" style="margin-top: 12px; display: none;">
-                <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-                حذف جميع التسجيلات
-            </button>
-        </div>
-
-        <!-- محتوى التبويب: التواصل (المضافة حديثاً) -->
-        <div class="settings-panel" id="panel-contact">
-            <h3 style="color: var(--accent-color); margin-bottom: 8px;">💬 اقتراح أو بلاغ عن خطأ</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
-                نرحب بملاحظاتك، اقتراحاتك، أو الإبلاغ عن أي مشكلة تواجهها أثناء استخدام التطبيق.
-                <br>سيتم إرسال رسالتك بشكل مجهول، ولن نطلب منك أي بيانات شخصية.
-            </p>
-
-            <!-- نموذج التواصل باستخدام Formspree (إرسال مجهول) -->
-            <form id="contactForm" action="https://formspree.io/f/xdaqkzdg" method="POST">
-                <textarea name="message" rows="5" 
-                          placeholder="اكتب رسالتك هنا (الخطأ، الاقتراح، أو أي ملاحظة)..."
-                          style="width: 100%; padding: 12px; background: var(--bg-input); 
-                                 border: 1px solid var(--border-color); border-radius: 12px; 
-                                 color: var(--text-main); font-size: 0.95rem; 
-                                 resize: vertical; box-sizing: border-box;
-                                 font-family: 'Tajawal', sans-serif;" required></textarea>
-                <button type="submit" class="btn" 
-                        style="margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                     إرسال
-                </button>
-            </form>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
-                سيتم إرسال رسالتك بشكل مجهول. شكرًا لتواصلك معنا.
-            </p>
-        </div>
-
         <div class="modal-footer">
             <p>إصدار التطبيق v1.1.1 • جميع الحقوق محفوظة ©</p>
         </div>
     </div>
-</div>
-
-<!-- ========================================================= -->
-<!-- 🎤 نظام التسجيل الصوتي (لوحة منفصلة اختيارية - يمكن إخفاؤها) -->
-<!-- ========================================================= -->
-<div class="recorder-panel" id="recorderPanel" style="display: none;">
-    <h3>🎤 التسجيل الصوتي</h3>
-
-    <div class="ayah-selector">
-        <label>
-            السورة:
-            <input type="number" id="recordingSurah" min="1" max="114" value="1">
-        </label>
-        <label>
-            الآية:
-            <input type="number" id="recordingAyah" min="1" value="1">
-        </label>
-    </div>
-
-    <div class="recorder-buttons">
-        <button class="recorder-btn start" id="recordBtn">🎙️ بدء التسجيل</button>
-        <button class="recorder-btn stop" id="stopBtn" disabled>⏹️ إيقاف</button>
-    </div>
-
-    <div class="recording-timer">
-        <span class="timer-label">⏱️ مدة التسجيل</span>
-        <span class="timer-display" id="recordingTimerDisplay">00:00</span>
-    </div>
-
-    <div class="waveform-container">
-        <canvas id="waveformCanvas"></canvas>
-    </div>
-
-    <!-- تم إزالة قائمة التسجيلات من هنا، انتقلت إلى الإعدادات -->
 </div>
 
 <!-- ========================================================= -->
@@ -543,7 +461,7 @@
 <script type="module" src="uiCore.js"></script>
 <script type="module" src="quranDisplay.js"></script>
 <script type="module" src="audioPlayer.js"></script>
-<script type="module" src="recorder.js"></script>
+
 <script type="module" src="pwa.js"></script>
 <script type="module" src="tutorial.js"></script>
 <script type="module" src="main.js"></script>

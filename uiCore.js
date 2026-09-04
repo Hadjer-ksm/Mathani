@@ -1,5 +1,6 @@
 // ============================================================
 // 🎨 uiCore.js - واجهة المستخدم الأساسية لتطبيق مَثَانِي
+// (تم حذف تبويب التسجيلات ونظام التسجيل)
 // ============================================================
 
 // ----- الاستيرادات -----
@@ -304,7 +305,7 @@ export function applyTheme(themeName, silent = false, refreshCallback = null) {
 }
 
 // =====================================================================
-// 7. نافذة الإعدادات (Settings Modal)
+// 7. نافذة الإعدادات (Settings Modal - بدون تسجيلات)
 // =====================================================================
 export function setupSettingsModal() {
     const {
@@ -318,8 +319,6 @@ export function setupSettingsModal() {
     if (settingsBtn && settingsModal) {
         settingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('active');
-            // تحديث قائمة التسجيلات عند فتح الإعدادات
-            updateRecordingsListInSettings();
         });
     }
 
@@ -341,11 +340,11 @@ export function setupSettingsModal() {
     // ===== التبويبات =====
     const tabs = document.querySelectorAll('.settings-tab');
     const panels = {
-        theme: document.getElementById('panel-theme'),
-        recordings: document.getElementById('panel-recordings'),
-        contact: document.getElementById('panel-contact')   // <-- إضافة تبويب التواصل
+        theme: document.getElementById('panel-theme')
+        // تم حذف 'recordings' و 'contact'
     };
 
+    // تفعيل التبويب الأول بشكل افتراضي
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -355,10 +354,6 @@ export function setupSettingsModal() {
             Object.keys(panels).forEach(key => {
                 panels[key].classList.toggle('active', key === tabId);
             });
-
-            if (tabId === 'recordings') {
-                updateRecordingsListInSettings();
-            }
         });
     });
 
@@ -379,133 +374,7 @@ export function setupSettingsModal() {
         });
     });
 
-    // ===== زر حذف جميع التسجيلات =====
-    const clearBtn = document.getElementById('clearAllRecordingsBtn');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', async () => {
-            const { getRecorder } = await import('./recorder.js');
-            const recorder = getRecorder();
-            if (recorder && typeof recorder.clearAllRecordings === 'function') {
-                recorder.clearAllRecordings();
-                setTimeout(updateRecordingsListInSettings, 300);
-            }
-        });
-    }
-
-    // ===== معالجة نموذج التواصل (إرسال مجهول عبر Formspree) =====
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); // منع إعادة تحميل الصفحة
-
-            const formData = new FormData(this);
-            const message = formData.get('message')?.trim();
-            if (!message) {
-                showToast('✏️ الرجاء كتابة رسالتك قبل الإرسال.');
-                return;
-            }
-
-            // إظهار حالة "جاري الإرسال"
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '⏳ جاري الإرسال...';
-            submitBtn.disabled = true;
-
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (response.ok) {
-                    showToast('✅ تم إرسال رسالتك بنجاح! شكراً لك.');
-                    this.reset(); // تفريغ الحقل
-                    // إغلاق الإعدادات اختيارياً
-                    if (settingsModal) settingsModal.classList.remove('active');
-                } else {
-                    // محاولة قراءة رسالة الخطأ من الاستجابة
-                    let errorMsg = 'حدث خطأ غير متوقع. حاول مرة أخرى.';
-                    try {
-                        const json = await response.json();
-                        if (json.error) errorMsg = json.error;
-                    } catch (_) {}
-                    showToast('❌ ' + errorMsg);
-                }
-            } catch (error) {
-                console.error('❌ فشل الإرسال:', error);
-                showToast('❌ تعذر الإرسال. تأكد من اتصالك بالإنترنت.');
-            } finally {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
-
     console.log('✅ تم تهيئة نافذة الإعدادات');
-}
-
-/**
- * تحديث قائمة التسجيلات داخل الإعدادات
- */
-async function updateRecordingsListInSettings() {
-    const container = document.getElementById('settingsRecordingsList');
-    const clearBtn = document.getElementById('clearAllRecordingsBtn');
-    if (!container) return;
-
-    try {
-        const { getRecorder } = await import('./recorder.js');
-        const recorder = getRecorder();
-        if (!recorder) {
-            container.innerHTML = '<p class="no-recordings">⚠️ نظام التسجيل غير جاهز</p>';
-            return;
-        }
-
-        const recordings = recorder.recordingsMetadata || [];
-
-        if (recordings.length === 0) {
-            container.innerHTML = '<p class="no-recordings">📭 لم تقم بأي تسجيلات بعد</p>';
-            if (clearBtn) clearBtn.style.display = 'none';
-            return;
-        }
-
-        if (clearBtn) clearBtn.style.display = 'block';
-
-        container.innerHTML = recordings.map(rec => `
-            <div class="recording-item" data-id="${rec.id}">
-                <div class="recording-info">
-                    <span class="recording-title">🎤 السورة ${rec.surah} - الآية ${rec.ayah}</span>
-                    <span class="recording-meta">${rec.duration}ث • ${rec.date} • ${rec.quality}</span>
-                </div>
-                <div class="recording-actions">
-                    <button class="icon-btn" data-action="play" title="تشغيل">▶️</button>
-                    <button class="icon-btn" data-action="download" title="تحميل">📥</button>
-                    <button class="icon-btn danger" data-action="delete" title="حذف">🗑️</button>
-                </div>
-            </div>
-        `).join('');
-
-        // ربط الأحداث
-        container.querySelectorAll('.recording-item').forEach(item => {
-            const id = parseInt(item.dataset.id);
-            item.querySelector('[data-action="play"]')?.addEventListener('click', () => {
-                recorder.playRecording(id);
-            });
-            item.querySelector('[data-action="download"]')?.addEventListener('click', () => {
-                recorder.downloadRecording(id);
-            });
-            item.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
-                await recorder.deleteRecording(id);
-                updateRecordingsListInSettings();
-            });
-        });
-
-    } catch (error) {
-        console.error('❌ فشل تحديث قائمة التسجيلات:', error);
-        container.innerHTML = '<p class="no-recordings">⚠️ حدث خطأ في تحميل التسجيلات</p>';
-    }
 }
 
 // =====================================================================
@@ -563,7 +432,7 @@ export function initUI(onSelectSurahCallback) {
     const savedTheme = loadTheme();
     applyTheme(savedTheme, true);
 
-    setupSettingsModal();  // بدلاً من setupThemeModal
+    setupSettingsModal();
     setupAboutModal();
     setupFocusMode();
     setupSearch();
